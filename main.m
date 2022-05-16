@@ -14,7 +14,7 @@ orbPath{1} = '/orbit/';
 erpPath{1} = '/orbit/';
 clkPath{1} = '/clock/';
 osbPath{1} = '/bias/';
-snxPath{1} = 'ftp://igs.gnsswhu.cn/pub/gps/products/';%igs22P2204.snx.Z
+snxPath{1} = 'ftp://igs.gnsswhu.cn/pub/gps/products/';
 
 obsType{1} = '/*.o'; obsType{2} = '/*.rnx'; obsType{3} = '/*.crx'; obsType{4} = '/*.crx.gz';
 
@@ -56,27 +56,34 @@ end
 [~,obsFileName,obsFileType] = fileparts(obs_file);
 switch i
     case 1
+        % rename
         obsFileName = [lower(obsFileName(1:4)),num2str(doy,'%03d'),'0.',num2str(year-2000,'%02d'),'o'];
         new_obsfile = [obs_path,'\',obsFileName];
         movefile(obs_file,new_obsfile);
     case 2
+        % rename
         obsFileName = [lower(obsFileName(1:4)),num2str(doy,'%03d'),'0.',num2str(year-2000,'%02d'),'o'];
         new_obsfile = [obs_path,'\',obsFileName];
         movefile(obs_file,new_obsfile);
     case 3
+        % crx2rnx
         str_crx2rnx = ['crx2rnx ',obs_file];
         system(str_crx2rnx);
         rnx_file = [obs_path,'\',obsFileName,'.rnx'];
+        % rename
         obsFileName = [lower(obsFileName(1:4)),num2str(doy,'%03d'),'0.',num2str(year-2000,'%02d'),'o'];
         new_obsfile = [obs_path,'\',obsFileName];
         movefile(rnx_file,new_obsfile);
     case 4
+        % gzip
         str_gzip = ['gzip -d ', obs_file];
         system(str_gzip);
         obs_file = obs_file(1:end-3);
+        % crx2rnx
         str_crx2rnx = ['crx2rnx ',obs_file];
         system(str_crx2rnx);
         rnx_file = [obs_path,'\',obsFileName(1:end-3),'rnx'];
+        % rename
         obsFileName = [lower(obsFileName(1:4)),num2str(doy,'%03d'),'0.',num2str(year-2000,'%02d'),'o'];
         new_obsfile = [obs_path,'\',obsFileName];
         movefile(rnx_file,new_obsfile);
@@ -89,19 +96,17 @@ str_ephfile = [obsWeb{ac},num2str(year),'/',num2str(doy,'%03d'),'/',...
 [status,result] = system(['wget ',str_ephfile],'-echo');
 if status == 0
     movefile(['BRDM','*.rnx.gz'],obs_path);           
+    % gzip
+    str_gzip = ['gzip -d ', obs_path,'\BRDM','*.rnx.gz'];
+    system(str_gzip);
+    % rename
+    eph_file = dir([obs_path,'\BRDM*.rnx']); 
+    ephFileName = eph_file.name;
+    ephFileName = [lower(ephFileName(1:4)),num2str(doy,'%03d'),'0.',num2str(year-2000,'%02d'),'p'];
+    eph_file = [eph_file.folder,'\',eph_file.name]; %original name
+    new_ephfile = [obs_path,'\',ephFileName]; % short name
+    movefile(eph_file,new_ephfile);
 end
-
-% gzip
-str_gzip = ['gzip -d ', obs_path,'\BRDM','*.rnx.gz'];
-system(str_gzip);
-
-%rename
-eph_file = dir([obs_path,'\BRDM*.rnx']); 
-ephFileName = eph_file.name;
-ephFileName = [lower(ephFileName(1:4)),num2str(doy,'%03d'),'0.',num2str(year-2000,'%02d'),'p'];
-eph_file = [eph_file.folder,'\',eph_file.name]; %original name
-new_ephfile = [obs_path,'\',ephFileName]; % short name
-movefile(eph_file,new_ephfile);
 
 %% Products
 
@@ -112,10 +117,12 @@ switch ac
         str_orbfile = [igsWeb{ac},num2str(year),orbPath{ac},orb_file];
         str_getOrb  = ['wget ',str_orbfile];        
         [status,result] = system(str_getOrb,'-echo');
-        system(['gzip -d ',orb_file]); 
-        orb_file = orb_file(1:end-3);
-        orb_file_s  = [lower(orb_file(1:3)),num2str(gps_week),num2str(gps_dow),'.sp3'];
         if status == 0
+            % gzip
+            system(['gzip -d ',orb_file]); 
+            orb_file = orb_file(1:end-3);
+            % rename
+            orb_file_s  = [lower(orb_file(1:3)),num2str(gps_week),num2str(gps_dow),'.sp3'];
             movefile(orb_file,[obs_path,'\',orb_file_s]);
             disp(['successfully download: ',orb_file_s]);
         end
@@ -124,10 +131,12 @@ switch ac
         str_clkfile = [igsWeb{ac},num2str(year),clkPath{ac},clk_file];
         str_getClk  = ['wget ',str_clkfile];
         [status,result] = system(str_getClk,'-echo');
-        system(['gzip -d ',clk_file]); 
-        clk_file = clk_file(1:end-3);
-        clk_file_s  = [lower(clk_file(1:3)),num2str(gps_week),num2str(gps_dow),'.clk'];
         if status == 0
+            % gzip
+            system(['gzip -d ',clk_file]); 
+            clk_file = clk_file(1:end-3);
+            % rename
+            clk_file_s  = [lower(clk_file(1:3)),num2str(gps_week),num2str(gps_dow),'.clk'];
             movefile(clk_file,[obs_path,'\',clk_file_s]);
             disp(['successfully download: ',clk_file_s]);
         end
@@ -138,14 +147,27 @@ switch ac
         [status,result] = system(str_getErp,'-echo');
         if status == 0
             % gzip
-            system(['gzip -d ',erp_file]);
-            % rename
+            system(['gzip -d ',erp_file]);           
             erp_file = erp_file(1:end-3);
+            % rename
             erp_file_s  = [lower(erp_file(1:3)),num2str(gps_week),num2str(gps_dow),'.erp'];
             movefile(erp_file,[obs_path,'\',erp_file_s]);
             disp(['successfully download: ',erp_file_s]);
         end
         
+        osb_file    = ['WUM0MGXRAP_',num2str(year),num2str(doy,'%03d'),'0000_01D_01D_ABS.BIA.gz'];
+        str_osbfile = [igsWeb{ac},num2str(year),osbPath{ac},osb_file];
+        str_getOsb  = ['wget ',str_osbfile];
+        [status,result] = system(str_getOsb,'-echo');
+        if status == 0
+            % gzip
+            system(['gzip -d ',osb_file]); 
+            osb_file = osb_file(1:end-3);
+            % rename
+            osb_file_s  = [lower(osb_file(1:3)),num2str(gps_week),num2str(gps_dow),'.bia'];
+            movefile(osb_file,[obs_path,'\',osb_file_s]);
+            disp(['successfully download: ',osb_file_s]);
+        end        
 end
 
 %% SNX file
